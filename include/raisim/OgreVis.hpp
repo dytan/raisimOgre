@@ -20,6 +20,8 @@
 #include "interfaceClasses.hpp"
 #include "SDL2/SDL.h"
 
+#include "SkeletonMesh.hpp"
+
 namespace raisim {
 
 class OgreVis :
@@ -32,7 +34,9 @@ class OgreVis :
     RAISIM_OBJECT_GROUP = 1ul << 0,
     RAISIM_COLLISION_BODY_GROUP = 1ul << 1,
     RAISIM_CONTACT_POINT_GROUP = 1ul << 2,
-    RAISIM_CONTACT_FORCE_GROUP = 1ul << 3
+    RAISIM_CONTACT_FORCE_GROUP = 1ul << 3,
+    RAISIM_SKIN_GROUP = 1ul << 4
+
   };
 
   /** return a pointer of the singleton**/
@@ -294,7 +298,30 @@ class OgreVis :
                                             bool selectable = true,
                                             unsigned long int group = RAISIM_OBJECT_GROUP | RAISIM_COLLISION_BODY_GROUP);
 
- private:
+  ///TODO  skeleton mesh
+  SkeletonMesh createSkeletonMeshObject(ArticulatedSystem *as,
+                                        const std::string &name, 
+                                        const std::string &mesh_file,
+                                        bool rotInWorld,
+                                        const Vec<3> &scale,
+                                        const Vec<3> &offset,
+                                        const Mat<3,3> &rot,
+                                        unsigned long int group = RAISIM_SKIN_GROUP);
+
+  SkeletonMesh createSkeletonMeshObject(ArticulatedSystem *as,
+                                        const std::string &name,
+                                        const std::string &mesh_file,
+                                        bool rotInWorld,
+                                        const Vec<3> &scale){
+    Vec<3> offset = {.0, .0, .0};
+    Mat<3,3> rot;
+    rot.setIdentity();
+    unsigned long int group = RAISIM_SKIN_GROUP;
+    return createSkeletonMeshObject(as, name, 
+      mesh_file, rotInWorld,
+      scale, offset, rot, group);
+  }
+private:
   OgreVis()
       : ApplicationContext("RaisimDemoApp") {
     resourceDir_ = std::string(OGREVIS_MAKE_STR(RAISIM_OGRE_RESOURCE_DIR));
@@ -405,6 +432,10 @@ class OgreVis :
   bool paused_ = false;
   unsigned long int mask_ = 1ul;
   std::chrono::system_clock::time_point start, end;
+
+  ///TODO skeleton mesh 
+  std::map<std::string, SkeletonMesh> skeletonMeshObject_;
+
 
 };
 }

@@ -267,6 +267,13 @@ bool OgreVis::frameEnded(const Ogre::FrameEvent &evt) {
   for (auto &ele : visObject_)
     ele.second.graphics->setVisible(bool(mask_ & ele.second.group));
 
+
+
+  // reset the visibility of the skeleton mesh objects
+  for (auto &ele: skeletonMeshObject_){
+    ele.second.graphics->setVisible(bool(mask_ & ele.second.group));
+  }
+
   return true;
 }
 
@@ -1148,6 +1155,14 @@ void OgreVis::renderOneFrame() {
         }
       }
     }
+
+    //TODO update skeleton mesh
+    if (mask_ & RAISIM_SKIN_GROUP){
+      for (auto &vob: skeletonMeshObject_){
+        vob.second.graphics->setVisible(vob.second.group & mask_);
+        vob.second.update();
+      }
+    }
   }
 
   for (auto &vob: visObject_) {
@@ -1188,6 +1203,67 @@ void OgreVis::renderOneFrame() {
     start = std::chrono::system_clock::now();
   }
 }
+
+
+
+//TODO
+SkeletonMesh OgreVis::createSkeletonMeshObject(raisim::ArticulatedSystem *as, 
+                                               const std::string &name, 
+                                               const std::string &mesh_file, 
+                                               bool rotInWorld,
+                                               const Vec<3> &scale, 
+                                               const Vec<3> &offset, 
+                                               const Mat<3,3> &rot, 
+                                               unsigned long int group){
+    
+    // load mesh file
+    if (!Ogre::MeshManager::getSingleton().getByName(mesh_file)){
+        std::cout<<"load mesh file from: "<<mesh_file;
+        Ogre::MeshManager::getSingleton().load(mesh_file,
+            Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME,
+            Ogre::HardwareBuffer::HBU_DYNAMIC_WRITE_ONLY,
+            Ogre::HardwareBuffer::HBU_DYNAMIC_WRITE_ONLY, true, true
+        );
+    }
+  
+    // create entity
+    auto *ent = raisim::OgreVis::getSceneManager()->createEntity(name, mesh_file,
+        Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME        
+    );
+
+
+    // load skeleton file
+    // auto mesh = ent->getMesh();
+    // Ogre::SkeletonPtr skel = Ogre::static_pointer_cast<Ogre::Skeleton>(mesh->getSkeleton());
+   
+    Ogre::SkeletonInstance* skel = ent->getSkeleton();
+
+  
+    SkeletonMesh obj;
+
+    obj.m_pSkeleton = skel;
+    obj.graphics = this->getSceneManager()->getRootSceneNode()->createChildSceneNode(name);
+    obj.graphics->attachObject(ent);
+    obj.scale = scale;
+    obj.graphics->scale(float(scale[0]), float(scale[1]), float(scale[2]));
+    obj.offset = offset;
+    obj.rotationOffset = rot;
+    obj.group = group;
+    obj.name = name;
+    obj.meshName = mesh_file;
+
+
+    obj.setArticulateSystem(as, rotInWorld);
+    
+    
+
+    skeletonMeshObject_[name] = obj;
+
+    std::cout<<"create mesh finished."<<std::endl;
+    return obj;
+}
+
+
 
 void OgreVis::deselect() {
   cameraMan_->setStyle(CS_FREELOOK);
